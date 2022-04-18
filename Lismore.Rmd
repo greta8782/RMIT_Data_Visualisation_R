@@ -1,0 +1,593 @@
+---
+title: "Lismore Rainfall Analysis: Greta Stojanovic"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+runtime: shiny
+---
+
+```{r, include = FALSE}
+library(rmarkdown)
+library(remotes)
+library(munsell)
+library(tidyverse)
+library(readr)
+library(lubridate)
+library(tidyr)
+library(knitr)
+library(stringr)
+library(plotly)
+library(shiny)
+library(shinydashboard)
+library(shinyWidgets)
+library(flexdashboard)
+library(highcharter)
+library(kableExtra)
+
+```
+
+```{r, include = FALSE}
+## Lismore Analysis
+
+# Data
+# 
+# http://www.bom.gov.au/climate/dwo/IDCJDW0000.shtml
+# 
+# for feb and march: https://www.farmonlineweather.com.au/station.jsp?lt=site&lc=58214&list=rb&of=of_a&ot=ot_a&mm=04&yyyy=2022&sub=go
+# 
+# Introduction
+# 
+# This analysis is using two Lismore rainfLismore datasets.
+# 
+# Station == 58214 (Lismore City Data 2004 onwards) (check if airport dataset available instead of this one)
+# 
+# Station == 58037 (Lismore Airport Data 1880s to 2003)
+# 
+# need to plot:
+# 
+# - each month finall over Lismore time month for month
+# 
+# - same for Year_Qtrly
+```
+
+
+
+
+```{r, include = FALSE}
+## Import Lismore Datasets
+L1 <- read.csv("Lismore_1.csv", stringsAsFactors = TRUE)
+L2<- read.csv("Lismore_2.csv", stringsAsFactors = TRUE)
+L2v2 <- read.csv("L2v2.csv", stringsAsFactors = TRUE)
+
+L3 <- read_csv("LFM.csv") #Feb and March 2022 data imported from separate source (BOM not yet updated fully)
+#note L3 source: https://www.farmonlineweather.com.au/station.jsp?lt=site&lc=58214&list=rb&of=of_a&ot=ot_a&mm=04&yyyy=2022&sub=go
+
+```
+
+```{r, include = FALSE}
+L2  <- L2v2 %>%
+  filter(Year>2003)
+```
+
+
+
+```{r, include = FALSE}
+## Merge Datasets to Create Tibble Lismore
+Lismore <- rbind(L1, L2)
+```
+
+
+```{r, include = FALSE}
+Lismore$Date <- as.Date(with(Lismore, paste(Year, Month, Day, sep = "-")))
+```
+
+```{r, include = FALSE}
+Lismore <- Lismore[complete.cases(Lismore[ , c('Date')]), ] 
+```
+
+
+```{r, include = FALSE}
+is.na(Lismore$RF)
+```
+
+
+
+
+```{r, include = FALSE}
+Lismore <- data.frame(Lismore %>%
+  rename(Code = "Product.code",
+         Station = "Bureau.of.Meteorology.station.number",
+         RF = "Rainfall.amount..millimetres.",
+         DaysMeasured = "Period.over.which.rainfall.was.measured..days."))
+
+```
+
+
+```{r, include = FALSE}
+#DF1[is.na(DF1)] = 0
+Lismore$RF <- Lismore$RF %>% replace_na(0.0)
+```
+
+
+```{r, include = FALSE}
+LismoreBeforeMarch <- Lismore
+```
+
+
+
+
+
+```{r, include = FALSE}
+Lismore <- Lismore %>% filter(Date < "2022-02-01") %>% arrange(Date)
+```
+
+
+```{r, include = FALSE}
+Lismore <- Lismore[, c(3,4,5,6,9)]
+```
+
+
+
+```{r, include = FALSE}
+L3 <- data.frame(L3)
+
+```
+
+```{r, include = FALSE}
+L3$Date <- as.Date(with(L3, paste(Year, Month, Day, sep = "-")))
+```
+
+```{r, include = FALSE}
+L3$Day <- as.integer(L3$Day)
+```
+
+```{r, }
+L3$Month <- as.numeric(L3$Month)
+```
+
+```{r, include = FALSE}
+L3 <- L3[, c(3, 2, 1, 4, 6)]
+```
+
+
+
+
+```{r, include = FALSE}
+Lismore <- rbind(Lismore, L3)
+```
+
+
+
+
+
+```{r, include = FALSE}
+## Create a Decade column
+#1800s - 1920s have a _ in front of decade
+#30s - present have no _
+Lismore$Decade <- cut(Lismore$Year, breaks = c(0, 1889, 1899, 1909, 1919, 1929, 1939, 1949, 1959, 1969, 1979, 1989, 1999, 2009, 2019, 2022),
+                       labels = c('_84-89', '_90s', '_00s', '_10s', '_20s', '30s', '40s', '50s', '60s', '70s', '80s', '90s', '00s', '10s', '20-22'))
+```
+
+
+
+```{r, include = FALSE}
+## Create a Year_Qtr column Qtr which is the Year_Qtr integer only
+Lismore$Qtr <- cut(Lismore$Month, breaks = c("0","3","6","9","12"),
+                       labels = c("1","2","3","4"))
+
+```
+
+
+```{r, include = FALSE}
+#create a Year_Qtr column Year_Qtr which includes the year
+Lismore$Year_Qtr <- quarter(Lismore$Date, with_year = TRUE)
+
+```
+
+
+
+
+```{r, include = FALSE}
+Lismore$Year_Mth <- format(as.Date(Lismore$Date), "%Y-%m")
+```
+
+
+
+```{r, include = FALSE}
+Lismore <- Lismore %>% filter(Year > 1884) %>% arrange(Date)
+```
+
+
+
+```{r byyear, include = FALSE}
+## ByYear
+ByYear <- Lismore %>% group_by(Year) %>% arrange(Date) %>% summarize(Year = unique(Year), total.yr.RF = sum(RF), avg.RF = mean(RF), min.RF = min(RF), max.RF = max(RF))
+```
+
+
+
+
+
+```{r,  include = FALSE}
+## by year, month
+ByMonth <- Lismore %>% group_by(Year_Mth) %>% arrange(Year_Mth) %>% summarise(Year_Mth = unique(Year_Mth), Year = unique(Year), Month = unique(Month), total.mth.RF = sum(RF), avg.mth.RF = mean(RF), min.mth.RF = min(RF), max.mth.RF = max(RF))
+```
+
+
+
+
+
+```{r,  include = FALSE}
+ByQuarter <- Lismore %>% group_by(Year_Qtr) %>% arrange(Year_Qtr) %>% summarise(total.qtr.RF = sum(RF), Year_Qtr = unique(Year_Qtr))
+```
+
+
+
+
+```{r,  include = FALSE}
+March22 <- ByMonth %>% filter(Month == 3 & Year == 2022) %>% select(total.mth.RF)
+```
+
+
+
+```{r,  include = FALSE}
+Lismore$Months <- format(as.Date(Lismore$Date), "%B")
+```
+
+
+
+
+```{r,  include = FALSE}
+df_month <- Lismore %>%
+  mutate(Date = floor_date(as_date(Date), "month"))
+```
+
+
+```{r,  include = FALSE}
+mrf <- df_month %>%
+  group_by(Year_Mth) %>% arrange(Year_Mth) %>%
+  summarize(N = sum(RF), Month = unique(Month), Year_Qtr = Year_Qtr)
+```
+
+```{r,  include = FALSE}
+mrfQ1 <- mrf %>% filter(Month >= 1 & Month <= 3)
+mrfQ2 <- mrf %>% filter(Month > 3 & Month <=6)
+mrfQ3 <- mrf %>% filter(Month > 6 & Month <= 9)
+mrfQ4 <- mrf %>% filter(Month >9 & Month <= 12)
+```
+
+
+
+
+```{r, include = FALSE}
+Q1 <- mrfQ1 %>% group_by(Year_Qtr, Year_Mth) %>% arrange(Year_Qtr) %>%
+  summarize(Year_Qtr = unique(Year_Qtr), MonthRF = sum(N), Year_Mth = unique(Year_Mth), Month = unique(Month))
+```
+
+```{r, include = FALSE}
+Q2 <- mrfQ2 %>% group_by(Year_Qtr, Year_Mth) %>% arrange(Year_Qtr) %>%
+  summarize(Year_Qtr = unique(Year_Qtr), MonthRF = sum(N), Year_Mth = unique(Year_Mth), Month = unique(Month))
+```
+
+```{r, include = FALSE}
+Q3 <- mrfQ3 %>% group_by(Year_Qtr, Year_Mth) %>% arrange(Year_Qtr) %>%
+  summarize(Year_Qtr = unique(Year_Qtr), MonthRF = sum(N), Year_Mth = unique(Year_Mth), Month = unique(Month))
+```
+
+```{r, include = FALSE}
+Q4 <- mrfQ4 %>% group_by(Year_Qtr, Year_Mth) %>% arrange(Year_Qtr) %>%
+  summarize(Year_Qtr = unique(Year_Qtr), MonthRF = sum(N), Year_Mth = unique(Year_Mth), Month = unique(Month))
+```
+
+
+
+Home
+=======================================================================
+
+Row
+--------------------------------------------------
+
+
+### Project Overview {data-height=300}
+
+
+In late February, Lismore, NSW experienced one of its worst floods in history. This dashboard is a deep dive (beyond standard mean focused analyses) into historical rainfall patterns.
+
+References:
+Bureau of Meteorology (17 April 2022), accessed 17 April 2022.
+http://www.bom.gov.au/climate/dwo/IDCJDW0000.shtml (Station == 58214 (Lismore City Data 2004 onwards) & Station == 58037 (Lismore Airport Data 1880s to 2003)
+
+Farm Online Weather Website(17 April 2022), accessed 17 April 2022. https://www.farmonlineweather.com.au/station.jsp?lt=site&lc=58214&list=rb&of=of_a&ot=ot_a&mm=04&yyyy=2022&sub=go
+
+
+### Annual Rainfall (mm) {data-height=300}
+
+
+
+
+```{r}
+fig <- plot_ly(ByYear, x = ~Year)
+fig <- fig %>% add_lines(y = ~total.yr.RF, name = "Annual Rainfall (mm)")
+fig <- fig %>% layout(
+    title = "Year on Year Rainfall (mm)",
+    xaxis = list(
+      rangeselector = list(
+        buttons = list(
+          list(
+            count = 3,
+            label = "3 mo",
+            step = "month",
+            stepmode = "backward"),
+          list(
+            count = 6,
+            label = "6 mo",
+            step = "month",
+            stepmode = "backward"),
+          list(
+            count = 1,
+            label = "1 yr",
+            step = "year",
+            stepmode = "backward"),
+          list(
+            count = 1,
+            label = "YTD",
+            step = "year",
+            stepmode = "todate"),
+          list(step = "all"))),
+
+      rangeslider = list(type = "date")),
+
+    yaxis = list(title = "Rainfall"))
+fig
+```
+
+
+
+
+
+Row
+-----------------------------------------------------------------------
+
+
+
+
+### Quarterly Totals {data-height=200}
+
+
+```{r}
+ds <- data.frame(ByQuarter)
+
+fig <- plot_ly(ds, x = ~Year_Qtr)
+fig <- fig %>% add_lines(y = ~total.qtr.RF, name = "Quarter Rainfall (mm)")
+fig <- fig %>% layout(
+    title = "Quarter on Quarter Rainfall (mm)",
+    xaxis = list(
+      rangeselector = list(
+        buttons = list(
+          list(
+            count = 3,
+            label = "3 mo",
+            step = "month",
+            stepmode = "backward"),
+          list(
+            count = 6,
+            label = "6 mo",
+            step = "month",
+            stepmode = "backward"),
+          list(
+            count = 1,
+            label = "1 yr",
+            step = "year",
+            stepmode = "backward"),
+          list(
+            count = 1,
+            label = "YTD",
+            step = "year",
+            stepmode = "todate"),
+          list(step = "all"))),
+
+      rangeslider = list(type = "date")),
+
+    yaxis = list(title = "Rainfall (Quarter Total)"))
+
+fig
+
+```
+
+
+
+### Summary {data-height=200}
+
+
+I have produced this dashboard as part of my final Data Visualisation and Communication Assignment with RMIT. This dashboard suits an audience interested in statistics and climate change analysis.  I will continue to keep this dashboard updated.  For enquiries please email me at greta@datadetectors.ai. 
+```{r}
+LM <- data.frame(Lismore)
+LM <- LM %>% select(RF) %>% summary(RF = RF, average = mean(RF), min = min(RF), max = max(RF))
+LM
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+
+
+### Rainfall Overview (Daily Rainfall 1885 to present) {data-height=500}
+
+
+```{r}
+# Libraries
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(hrbrthemes)
+
+# Load dataset from github
+ds <- data.frame(Lismore)
+# plot
+fig <- plot_ly(ds, type = 'scatter', mode = 'lines')%>%
+  add_trace(x = ~Date, y = ~RF)%>%
+  layout(showlegend = F, title='Daily Rainfall 1895 to Present',
+         xaxis = list(rangeslider = list(visible = T),
+                      rangeselector=list(
+                        buttons=list(
+                          list(count=1, label="1m", step="month", stepmode="backward"),
+                          list(count=6, label="6m", step="month", stepmode="backward"),
+                          list(count=1, label="YTD", step="year", stepmode="todate"),
+                          list(count=1, label="1y", step="year", stepmode="backward"),
+                          list(step="all")
+                        ))))
+fig <- fig %>%
+  layout(
+         xaxis = list(zerolinecolor = '#ffff',
+                      zerolinewidth = 2,
+                      gridcolor = 'ffff'),
+         yaxis = list(zerolinecolor = '#ffff',
+                      zerolinewidth = 2,
+                      gridcolor = 'ffff'),
+         plot_bgcolor='#e5ecf6', margin = 0, width = 1200)
+fig
+```
+
+
+Month
+=======================================================================
+
+Row
+-----------------------------------------------------------------------
+
+
+
+### Plot
+
+```{r}
+# Libraries
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(hrbrthemes)
+
+# Load dataset from github
+data <- ByMonth
+# plot
+fig <- plot_ly(data, type = 'scatter', mode = 'lines')%>%
+  add_trace(x = ~Year_Mth, y = ~total.mth.RF)%>%
+  layout(showlegend = F, title='Monthly Rainfall 1885 to Present',
+         xaxis = list(rangeslider = list(visible = T),
+                      rangeselector=list(
+                        buttons=list(
+                          list(count=1, label="1m", step="month", stepmode="backward"),
+                          list(count=6, label="6m", step="month", stepmode="backward"),
+                          list(count=1, label="YTD", step="year", stepmode="todate"),
+                          list(count=1, label="1y", step="year", stepmode="backward"),
+                          list(step="all")
+                        ))))
+fig <- fig %>%
+  layout(
+         xaxis = list(zerolinecolor = '#ffff',
+                      zerolinewidth = 2,
+                      gridcolor = 'ffff'),
+         yaxis = list(zerolinecolor = '#ffff',
+                      zerolinewidth = 2,
+                      gridcolor = 'ffff'),
+         plot_bgcolor='#e5ecf6', margin = 0, width = 1200)
+fig
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+### Data {data-height=500}
+
+```{r}
+ds <- data.frame(ByMonth)
+
+fig <- plot_ly(ds, x = ~Year_Mth)
+fig <- fig %>% add_lines(y = ~total.mth.RF, name = "Rainfall (total in month)")
+fig <- fig %>% layout(
+    title = "Monthly Rainfall (with Month Detail Visible)",
+    xaxis = list(
+      rangeselector = list(
+        buttons = list(
+          list(
+            count = 3,
+            label = "3 mo",
+            step = "month",
+            stepmode = "backward"),
+          list(
+            count = 6,
+            label = "6 mo",
+            step = "month",
+            stepmode = "backward"),
+          list(
+            count = 1,
+            label = "1 yr",
+            step = "year",
+            stepmode = "backward"),
+          list(
+            count = 1,
+            label = "YTD",
+            step = "year",
+            stepmode = "todate"),
+          list(step = "all"))),
+
+      rangeslider = list(type = "date")),
+
+    yaxis = list(title = "Rainfall (month total)"))
+
+fig
+```
+
+
+
+
+### Statistics Summary {data-height=300}
+
+
+```{r}
+BM <- ByMonth %>% select(total.mth.RF, avg.mth.RF, min.mth.RF, max.mth.RF)
+summary(BM)
+```
+
+
+Quarterly Breakdown
+=======================================================================
+
+
+Row
+-----------------------------------------------------------------------
+
+### Q1 Scatterplot {data-height=300}
+
+
+```{r}
+hchart(Q1, "scatter", hcaes(x = Year_Qtr, y = MonthRF, group = Month))
+```
+### Q2 Scatterplot (note no data for 2022 yet) {data-height=300}
+
+
+```{r}
+hchart(Q2, "scatter", hcaes(x = Year_Qtr, y = MonthRF, group = Month))
+```
+
+Row
+-----------------------------------------------------------------------
+### Q3 Scatterplot (note no data for 2022 yet) {data-height=300}
+
+
+```{r}
+hchart(Q3, "scatter", hcaes(x = Year_Qtr, y = MonthRF, group = Month))
+```
+
+### Q4 Scatterplot (note no data for 2022 yet) {data-height=300}
+
+```{r}
+hchart(Q4, "scatter", hcaes(x = Year_Qtr, y = MonthRF, group = Month))
+```
+
+
+
+
