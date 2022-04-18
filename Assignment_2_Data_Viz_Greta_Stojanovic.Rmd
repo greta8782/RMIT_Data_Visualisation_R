@@ -1,0 +1,273 @@
+---
+title: "Assignment 2"
+subtitle: "Deconstruct, Reconstruct Web Report"
+author: "Greta Stojanovic (Student Number: s3914796)"
+output: html_document
+urlcolor: blue
+---
+
+
+
+### {.tabset} 
+
+
+
+#### Original
+
+<br>
+<center>
+<img src="dataviz.png" width="80%">
+</center>
+<br>
+
+
+**Introduction** 
+
+In this assignment we are required to evaluate a problematic data visualisation that exhibits a range of complex issues.  
+<br>
+
+**The Visualisation:**
+
+Less peaceful areas are at higher risk from natural hazards - source: Sky News (Reference [1])
+<br>
+<br>
+
+**The Objective**
+
+The objective of this visualisation is to demonstrate the statement in the title, that, “Less Peaceful Areas are at higher risk from natural hazards.”
+<br>
+<br>
+
+**The Audience**
+
+The intended audience of this visualisation is visitors to the Sky News Website that are particularly interested in global issues and data (these users have navigated to the World Section of the website which typically displays graphical information on global topics). 
+<br>
+<br>
+
+**The Top 3 Issues With This Visualisation**
+
+While the audience of a major News platform such as Sky News can vary from low to high familiarity with statistical data, the placement of this visualisation in the data visualisation segment of the website would assume a readership with a higher aptitude for visualisations such as this one and an ability to infer the intended meaning. 
+<br>
+
+Despite this, the graph is difficult to interpret and contains a number of design flaws, in particular:
+<br>
+
+* Individual Chart Elements fail to work together to reinforce the overarching takeaway messages
+
+* Ineffective use of colour
+
+* Truncated y axis  
+
+<br>
+<br>
+**1. Individual Chart Elements:**
+
+<br>
+To the observer, the coloured dots appear to be relatively equal in each quartile of this graph (with some outliers).  There is no quartile that ‘jumps out’ to reveal a clear purpose.
+<br>
+The chart is missing x and y axis labels (in place is a y upper limit and and x upper limit) and the legend is placed unusually at the top of the chart. 
+<br>
+
+The linear regression line does not clearly show the audience the meaning of which groups sit above and below as the reader has to check multiple times what the colour scales mean and how they can interpret the result.  Further the scale of the chart and placement of the data points in the scatterplot appear to show more of an equal likelihood that both countries with high peace and low peace will experience high levels of environmental threats (density of red tones and blue tones in the upper y axis appear high)
+<br>
+<br>
+<center>
+<img src="V3.png" width="80%">
+</center>
+<br>
+<br>
+
+**2. Ineffective Use of Colour:**
+<br>
+
+The chart uses colour however the colour in this instance creates an additional layer of confusion when attempting to interpret the purpose of the chart.
+<br>
+
+The visualisation has used blue tones to depict peaceful countries which appear on the left of the x scale and red tones to depict less peaceful countries which appear to the right of the x scale. The relationship between red and blue is unclear unless the legend is examined closely. 
+<br>
+
+Further, the chart has 4 clear colour segmentations.  It is unclear upon initial inspection of the chart that the blue hues are intended to represent the group of More Peaceful countries and the red hues are intended to represent the Less Peaceful countries.  
+<br>
+
+The observer is forced to check the chart multiple times to infer what colour matches to what axis and how each colour links to other colours on the chart. 
+<br>
+<br>
+**3. Truncated Y-Axis:**
+<br>
+
+Truncated axes have the potential to mislead the audience and are recommended to be avoided when producing any time of data visualisation.
+<br>
+
+The truncated axis in this visualisation does not appear to be used for the purpose of misleading the viewer.  It does however skew the scale of the plot and reduce the efficacy of the objective.  
+<br>
+
+In this instance, the truncated y axis is contributing to the issue outlined in point 1, that the initial takeaway of the plot is that there are 4 quartiles of roughly equal size and gravity (until closer inspection proves otherwise). 
+<br>
+<br>
+
+
+**Reference**
+<br>
+
+
+* [1] Sky News Website World Section. (2022). *Climate change helping 'make world less peaceful', Global Peace Index says*. Retrieved March 27, 2022, from Skynews.com website: https://news.sky.com/story/climate-change-helping-make-world-less-peaceful-global-peace-index-says-11739943
+
+* [2] Vision of Humanity.  (2022).  *Ecological Threat Register*. Retrieved March 27, 2022, from Vision of Humanity website: https://www.visionofhumanity.org/maps/ecological-threat-register-2021/#/
+
+* [3] Ecological Threat Report.  Retried March 27, 2022, from website: https://www.visionofhumanity.org/wp-content/uploads/2021/10/ETR-2021-web-131021.pdf
+
+* [4] Global Peace Index 2021.  Retrieved March 27, 2022, from website:
+https://www.visionofhumanity.org/wp-content/uploads/2021/06/GPI-2021-web-1.pdf
+
+
+#### Code
+<br>
+<br>
+
+The following code was used to fix the issues identified in the original. 
+<br>
+<br>
+
+
+```{r package list, echo=T, results='hide'}
+packages <- c("plotfunctions", "dplyr", "ggplot2", "gridExtra", "ggrepel", "magrittr", "knitr", "plyr")
+```
+
+```{r setup , echo=T, results='hide'}
+setup <- function(setup){
+for(p in packages){
+  if(!require(p,character.only = TRUE)) install.packages(p)
+  library(p,character.only = TRUE)
+  print("done loading packages")}
+}
+setup(packages)
+#update.packages(repos='http://cran.rstudio.com/', checkBuilt=TRUE)
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+```
+
+```{r import peace dataframe, echo=T, results='hide'}
+library(readxl)
+GPI_2021_overall_scores_and_domains_2008_2021 <- read_excel("GPI-2021-overall-scores-and-domains-2008-2021.xlsx", 
+    sheet = "Overall Scores")
+
+df <- data.frame(GPI_2021_overall_scores_and_domains_2008_2021)
+colnames(df) <- df[1,]
+df <- df[-1, ]
+
+head(df)
+```
+
+
+```{r row names, echo=T, results='hide'}
+#reindex row numbers
+row.names(df) <- 1:nrow(df)
+```
+
+```{r new dataframe, echo = T, results = 'hide'}
+#limit dataframe to reflect Country and most recent year
+df <- df[, c(1,16)]
+```
+
+
+
+```{r names, echo = TRUE, results = 'hide'}
+#change the column names to Country and GPI_SCORE.  This is done in preperation for merge of dataframes below
+names(df) <- c("Country", "GPI_SCORE")
+```
+
+
+```{r ETR dataset, echo = T, results = 'hide'}
+#load in the ETR dataset (sourced from the Vision for Humanity website)
+ETR <- read_excel("ETR.xlsx")
+
+ETR <- data.frame(ETR)
+
+head(ETR)
+```
+
+```{r ETR rename columns, echo = T, results = 'hide'}
+#rename column names in ETR dataframe for purposes of merging
+colnames(ETR) <- c("ETR_RANK", "Country", "ETR_SCORE")
+head(ETR)
+```
+
+
+
+```{r}
+all <- merge(ETR, df, by = 'Country')
+all["Unrest"] <- abs(5 - all["GPI_SCORE"])
+nOfLabels <- 12
+all$Country2 <- ifelse(1:nrow(all) %in% sample(1:nrow(all), nOfLabels), 
+                          all$Country, "")
+```
+
+```{r plot code, eval = FALSE}
+ggplot(all) +
+  aes(
+    x = GPI_SCORE,
+    y = ETR_RANK,
+    colour = GPI_SCORE
+    #size = ETR_SCORE
+  ) +
+  geom_point(shape = "circle") +
+  scale_color_gradient(low = "#301EE8", high = "#EF182E") +
+  labs(
+    x = "Most Peaceful       ------>       Least Peaceful",
+    y = "Ecological Threat Rank (Country)",
+    title = "Peace Score (GPI) vs Ecological Threat",
+    subtitle = "Countries With Lower Peace Indicators Exhibit Higher Ecological Threat Levels",
+    caption = "Data Source: www.visionofhumanity.org",
+    color = "Peace Level"
+    #size = "Ecological Threat"
+  ) + 
+  geom_label_repel(aes(label = Country2, max.overlaps = 20)) + 
+
+  theme_minimal()
+```
+
+
+
+#### Reconstruction
+
+The following plot fixes the main issues in the original.  It has been built with the original audience in mind and taking regard for best practice (in particular the Evergreen 24 point data visualisation checklist). 
+
+
+- The Title, Subtitle and Data Source Credit have been positioned in the correct places and are in the appropriate position and style format hierarchy.
+<br>
+
+- The axes are not truncated and colour has been used to ensure that the purpose of the chart is enhanced and the chart is clearer to understand.
+<br>
+
+- Labels are used scarcely to ensure the audience is able to grasp more clearly what the other elements in the chart mean.
+<br>
+<br>
+<br>
+
+
+
+```{r, echo = FALSE}
+ggplot(all) +
+  aes(
+    x = GPI_SCORE,
+    y = ETR_RANK,
+    colour = GPI_SCORE
+    #size = ETR_SCORE
+  ) +
+  geom_point(shape = "circle") +
+  scale_color_gradient(low = "#301EE8", high = "#EF182E") +
+  labs(
+    x = "Most Peaceful       ------>       Least Peaceful",
+    y = "Ecological Threat Rank (Country)",
+    title = "Peace Score (GPI) vs Ecological Threat",
+    subtitle = "Countries With Lower Peace Indicators Exhibit Higher Ecological Threat Levels",
+    caption = "Data Source: www.visionofhumanity.org",
+    color = "Peace Level"
+    #size = "Ecological Threat"
+  ) + 
+  geom_label_repel(aes(label = Country2, max.overlaps = 20)) + 
+
+  theme_minimal()
+```
+
